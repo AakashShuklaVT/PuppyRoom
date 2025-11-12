@@ -15,7 +15,7 @@ export default [
     {
         name: 'roomModel',
         type: 'gltfModel',
-        path: 'models/Room/room-2.glb'
+        path: 'models/Room/room.glb'
     },
     {
         name: 'dogModel',
