@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Puppy Room</title>
+    <link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+    <div class="loading-screen">
+        <div class="loading-bar">
+            <div class="loading-bar-fill"></div>
+        </div>
+    </div>
+
+    <div class="debug-wrap" role="region" aria-label="Debug toggles">
+        <h2 class="visually-hidden">Debug toggles</h2>
+
+        <label class="chk">
+            <input id="ssr" type="checkbox" />
+            <span class="label">SSR</span>
+        </label>
+
+        <label class="chk">
+            <input id="panning" type="checkbox" unchecked />
+            <span class="label">Panning</span>
+        </label>
+    </div>
+
+    <canvas class="webgl"></canvas>
+    <script type="module" src="./script.js"></script>
+</body>
+
+</html>

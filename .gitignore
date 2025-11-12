@@ -1,0 +1,44 @@
+# Node dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+dist/
+build/
+.out/
+.cache/
+.tmp/
+.vite/
+.next/
+.vercel/
+parcel-cache/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# IDE / Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment / local config
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+
+# Optional lock files (uncomment if using one package manager)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# Three.js project assets to KEEP
+!public/models/
+!src/assets/models/
+!static/models/
