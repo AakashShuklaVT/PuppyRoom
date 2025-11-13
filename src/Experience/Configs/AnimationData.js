@@ -127,7 +127,7 @@ export const ANIMATIONS_BY_TYPE = {
         'Walk_B_IP',
         'Walk_BL_IP',
         'Walk_BR_IP',
-        'Walk_F_IP', 
+        'Walk_F_IP',
         'Walk_L_IP',
         'Walk_R_IP',
     ],
@@ -157,18 +157,32 @@ export const ANIMATIONS_BY_TYPE = {
     ],
 }
 
-export const CROSS_FADE_TIMINGS_FROM_WALK = {
-    'Idle_1': 0.1,
-    'Idle_2': 0.3,
-    'Idle_3': 0.2,
-    'Idle_4': 0.5,
-    'Idle_6': 0.8,
-    'Idle_7': 0.1,
-    'Crouch_Idle_loop_1': 0.3,
-    'Crouch_Idle_loop_2': 0.2,
-    'Sitting_loop_1': 0.3,
-    'Sitting_loop_2': 0.2,
-    'Pick_up_idle': 0.2,
+export const FADE_PROFILES = {
+    IDLE_TO_TURN: {
+        duration: 0.45,
+        profile: [
+            { end: 0.15, startW: 0, endW: 0.7 },
+            { end: 0.6, startW: 0.7, endW: 0.9 },
+            { end: 1.0, startW: 0.9, endW: 1.0 }
+        ]
+    },
+
+    TURN_TO_WALK: {
+        duration: 0.55,
+        profile: [
+            { end: 0.25, startW: 0, endW: 0.65 },
+            { end: 0.8, startW: 0.65, endW: 0.9 },
+            { end: 1.0, startW: 0.9, endW: 1.0 }
+        ]
+    },
+
+    WALK_TO_IDLE: {
+        duration: 0.2,
+        profile: [
+            { end: 0.2, startW: 0, endW: 0.85 }, 
+            { end: 1.0, startW: 0.85, endW: 1.0 } 
+        ]
+    }
 }
 
 export const TURN_SIDES = {

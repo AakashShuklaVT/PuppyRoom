@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import Experience from '../Experience.js'
-import { ANIMATION_NAMES as RAW_NAMES, ANIMATIONS_BY_TYPE, TURN_SIDES } from '../../../static/Configs/AnimationData.js'
+import { ANIMATION_NAMES as RAW_NAMES, ANIMATIONS_BY_TYPE, TURN_SIDES, FADE_PROFILES } from '../Configs/AnimationData.js'
 
 const ROOM_DIMENSIONS = { width: 4.8, height: 4.8 }
 
@@ -70,39 +70,64 @@ export default class Dog {
         this.animation = {}
         this.animation.mixer = new THREE.AnimationMixer(this.model)
         this.animation.actions = {}
+        this.animation.fade = null
 
         for (const name of RAW_NAMES) {
             const clip = this.resource.animations[RAW_NAMES.indexOf(name)]
             const action = this.animation.mixer.clipAction(clip)
+            action.enabled = true
+            action.setEffectiveWeight(0)
             action.setLoop(THREE.LoopRepeat)
             action.clampWhenFinished = true
             this.animation.actions[name] = action
         }
 
-        this.animation.play = name => {
+        this.animation.play = (name, fadeDuration = null, fadeProfile = null) => {
             const newAction = this.animation.actions[name]
             const oldAction = this.animation.actions.current
             if (!newAction || newAction === oldAction) return
 
-            const isWalkToIdle =
-                oldAction &&
-                oldAction._clip.name.includes('Walk') &&
-                this.idleAnimations.includes(name)
-
-            const fadeDuration = isWalkToIdle ? 0.4 : 0.3
-
+            let transitionKey = null
             if (oldAction) {
-                newAction.reset()
-                newAction.crossFadeFrom(oldAction, fadeDuration, true)
+                const from = oldAction._clip.name
+                const to = newAction._clip.name
+
+                if (from.includes('Idle') && to.includes('Turn')) transitionKey = 'IDLE_TO_TURN'
+                else if (from.includes('Turn') && to.includes('Walk')) transitionKey = 'TURN_TO_WALK'
+                else if (from.includes('Walk') && to.includes('Idle')) transitionKey = 'WALK_TO_IDLE'
             }
 
-            newAction.play()
+            if (transitionKey && !fadeProfile && !fadeDuration) {
+                const preset = FADE_PROFILES[transitionKey]
+                fadeDuration = preset.duration
+                fadeProfile = preset.profile
+            }
+
+            if (!fadeDuration) fadeDuration = 0.6
+
+            newAction.reset().play()
+            if (oldAction) oldAction.play()
+
+            this.animation.fade = {
+                from: oldAction,
+                to: newAction,
+                duration: fadeDuration,
+                elapsed: 0,
+                profile: fadeProfile || null
+            }
+
+            if (oldAction) oldAction.setEffectiveWeight(1)
+            newAction.setEffectiveWeight(0)
+
             this.animation.actions.current = newAction
+            console.log(this.animation.actions.current._clip.duration, this.animation.actions.current._clip.name);
         }
 
         const idle = this.idleAnimations[0]
-        this.animation.actions.current = this.animation.actions[idle]
-        this.animation.actions.current.play()
+        const idleAction = this.animation.actions[idle]
+        idleAction.play()
+        idleAction.setEffectiveWeight(1)
+        this.animation.actions.current = idleAction
     }
 
     generateRandomCurve() {
@@ -151,7 +176,7 @@ export default class Dog {
         const offsetScale = Math.min(distance * 0.05, 0.2)
         const offset1 = (Math.random() - 0.5) * offsetScale
         const offset2 = (Math.random() - 0.5) * offsetScale
-        
+
         const mid1 = new THREE.Vector3().lerpVectors(start, end, 0.33).addScaledVector(perpendicular, offset1)
         const mid2 = new THREE.Vector3().lerpVectors(start, end, 0.66).addScaledVector(perpendicular, offset2)
 
@@ -184,7 +209,7 @@ export default class Dog {
 
         const cross = new THREE.Vector3().crossVectors(currentForward, newTargetDirection)
         const crossY = cross.y
-        
+
         const dot = THREE.MathUtils.clamp(currentForward.dot(newTargetDirection), -1, 1)
         const signedAngle = Math.atan2(crossY, dot)
         const signedDeg = THREE.MathUtils.radToDeg(signedAngle)
@@ -232,7 +257,7 @@ export default class Dog {
             if (this.turnAngle < 10) turnAnim = ANIMATIONNAMES.WALK_FORWARD
             else if (this.turnAngle < 135) turnAnim = ANIMATIONNAMES.TURN_LEFT
             else turnAnim = ANIMATIONNAMES.TURN_LEFT_180
-        } 
+        }
         else if (this.turnDirection === TURN_SIDES.RIGHT) {
             if (this.turnAngle < 10) turnAnim = ANIMATIONNAMES.WALK_FORWARD
             else if (this.turnAngle < 135) turnAnim = ANIMATIONNAMES.TURN_RIGHT
@@ -262,8 +287,27 @@ export default class Dog {
         setTimeout(() => this.startNewPath(), duration)
     }
 
+    updateFade(delta) {
+        const fade = this.animation.fade
+        if (!fade) return
+
+        fade.elapsed += delta
+        const t = Math.min(fade.elapsed / fade.duration, 1)
+
+        const smoothT = THREE.MathUtils.smoothstep(t, 0, 1)
+
+        if (fade.from) fade.from.setEffectiveWeight(1 - smoothT)
+        fade.to.setEffectiveWeight(smoothT)
+
+        if (t >= 1) {
+            if (fade.from) fade.from.stop()
+            this.animation.fade = null
+        }
+    }
+
     update() {
         this.animation.mixer.update(this.time.delta * 0.001)
+        this.updateFade(this.time.delta * 0.001)
 
         if (this.isTurning) {
             this.turnProgress += this.time.delta / 1000 / this.turnDuration
@@ -294,8 +338,9 @@ export default class Dog {
         if (this.curveProgress >= 1) {
             if (!this.reached) {
                 this.reached = true
-                const finalPos = this.curve.getPointAt(1)
-                this.model.position.copy(finalPos)
+                // const finalPos = this.curve.getPointAt(0.99)
+                // const finalPos = this.curve.getPointAt(1)
+                // this.model.position.copy(finalPos)
                 this.playSequentialIdle()
             }
             return
