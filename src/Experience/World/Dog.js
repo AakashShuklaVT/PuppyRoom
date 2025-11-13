@@ -1,16 +1,26 @@
 import * as THREE from 'three'
 import Experience from '../Experience.js'
-import { ANIMATION_NAMES, ANIMATIONS_BY_TYPE } from '../../../static/Configs/AnimationData.js'
+import { ANIMATION_NAMES as RAW_NAMES, ANIMATIONS_BY_TYPE, TURN_SIDES } from '../../../static/Configs/AnimationData.js'
 
 const ROOM_DIMENSIONS = { width: 4.8, height: 4.8 }
 
+const ANIMATIONNAMES = {
+    WALK_FORWARD: 'Walk_F_IP',
+    TURN_LEFT: 'Turn_L_IP',
+    TURN_RIGHT: 'Turn_R_IP',
+    TURN_LEFT_180: 'Turn_L180_IP',
+    TURN_RIGHT_180: 'Turn_R180_IP',
+}
+
 export default class Dog {
     constructor() {
-        this.experience = new Experience()
-        this.scene = this.experience.scene
-        this.resources = this.experience.resources
-        this.time = this.experience.time
-        this.debug = this.experience.debug
+        const exp = new Experience()
+        this.scene = exp.scene
+        this.resources = exp.resources
+        this.time = exp.time
+        this.debug = exp.debug
+
+        this.modelScaling = 1.6
 
         this.curve = null
         this.curveProgress = 0
@@ -34,23 +44,21 @@ export default class Dog {
 
         const firstIdle = this.idleAnimations[0]
         const idleAction = this.animation.actions[firstIdle]
+
         if (idleAction) {
             this.animation.play(firstIdle)
-            const duration = idleAction._clip.duration * 1000
-            setTimeout(() => {
-                this.startNewPath()
-            }, duration)
-        } else {
+            setTimeout(() => this.startNewPath(), idleAction._clip.duration * 1000)
+        }
+        else {
             this.startNewPath()
         }
     }
 
-
     setModel() {
         this.model = this.resource.scene
-        this.model.scale.set(1.6, 1.6, 1.6)
-        this.model.traverse((child) => {
-            if (child instanceof THREE.Mesh) {
+        this.model.scale.set(this.modelScaling, this.modelScaling, this.modelScaling)
+        this.model.traverse(child => {
+            if (child.isMesh) {
                 child.castShadow = true
                 child.receiveShadow = true
             }
@@ -63,27 +71,32 @@ export default class Dog {
         this.animation.mixer = new THREE.AnimationMixer(this.model)
         this.animation.actions = {}
 
-        for (const name of ANIMATION_NAMES) {
-            const clip = this.resource.animations[ANIMATION_NAMES.indexOf(name)]
+        for (const name of RAW_NAMES) {
+            const clip = this.resource.animations[RAW_NAMES.indexOf(name)]
             const action = this.animation.mixer.clipAction(clip)
             action.setLoop(THREE.LoopRepeat)
             action.clampWhenFinished = true
             this.animation.actions[name] = action
         }
 
-        this.animation.play = (name) => {
+        this.animation.play = name => {
             const newAction = this.animation.actions[name]
             const oldAction = this.animation.actions.current
             if (!newAction || newAction === oldAction) return
+
+            const isWalkToIdle =
+                oldAction &&
+                oldAction._clip.name.includes('Walk') &&
+                this.idleAnimations.includes(name)
+
+            const fadeDuration = isWalkToIdle ? 0.4 : 0.3
+
             if (oldAction) {
                 newAction.reset()
-                newAction.crossFadeFrom(oldAction, 0.3, true)
-            }
-            newAction.play()
-            if (name != 'Walk_F_IP') {
-                console.log(name);
+                newAction.crossFadeFrom(oldAction, fadeDuration, true)
             }
 
+            newAction.play()
             this.animation.actions.current = newAction
         }
 
@@ -93,40 +106,55 @@ export default class Dog {
     }
 
     generateRandomCurve() {
-        const halfW = ROOM_DIMENSIONS.width / 2
-        const halfH = ROOM_DIMENSIONS.height / 2
+        const halfWidth = ROOM_DIMENSIONS.width / 2
+        const halfHeight = ROOM_DIMENSIONS.height / 2
         const start = this.model.position.clone()
+
+        const currentForward = new THREE.Vector3(0, 0, 1).applyQuaternion(this.model.quaternion).normalize()
 
         let end
         let attempts = 0
-        const minDistance = 1.5
-        do {
-            end = new THREE.Vector3(
-                THREE.MathUtils.randFloat(-halfW, halfW),
-                0,
-                THREE.MathUtils.randFloat(-halfH, halfH)
-            )
-            attempts++
-        } while (start.distanceTo(end) < minDistance && attempts < 10)
+        let maxAttempts = 30
+        this.minDistance = 1.5
+        this.minTurnAngle = 70
+        this.maxTurnAngle = 135
 
-        if (start.distanceTo(end) < minDistance) {
-            const dir = new THREE.Vector3(Math.random() - 0.5, 0, Math.random() - 0.5).normalize()
-            end = start.clone().addScaledVector(dir, minDistance)
+        do {
+            end = new THREE.Vector3(THREE.MathUtils.randFloat(-halfWidth, halfWidth), 0, THREE.MathUtils.randFloat(-halfHeight, halfHeight))
+
+            const dir = new THREE.Vector3().subVectors(end, start).normalize()
+            const dot = THREE.MathUtils.clamp(currentForward.dot(dir), -1, 1)
+            const angleDeg = THREE.MathUtils.radToDeg(Math.acos(dot))
+
+            if (start.distanceTo(end) >= this.minDistance && angleDeg >= this.minTurnAngle && angleDeg <= this.maxTurnAngle) break
+
+            attempts++
+        } while (attempts < maxAttempts)
+
+        if (start.distanceTo(end) < this.minDistance) {
+            const dir = currentForward
+                .clone()
+                .applyAxisAngle(
+                    new THREE.Vector3(0, 1, 0),
+                    THREE.MathUtils.degToRad(
+                        THREE.MathUtils.randFloat(this.minTurnAngle, this.maxTurnAngle) *
+                        (Math.random() < 0.5 ? -1 : 1)
+                    )
+                )
+            end = start.clone().addScaledVector(dir, this.minDistance * 2)
         }
 
         const direction = new THREE.Vector3().subVectors(end, start).normalize()
         const distance = start.distanceTo(end)
         const perpendicular = new THREE.Vector3(-direction.z, 0, direction.x).normalize()
 
-        // ↓ Lowered curvature intensity for near-linear paths
-        const offsetScale = Math.min(distance * 0.05, 0.1) // smaller max deviation
+        const offsetScale = Math.min(distance * 0.05, 0.2)
         const offset1 = (Math.random() - 0.5) * offsetScale
         const offset2 = (Math.random() - 0.5) * offsetScale
-
+        
         const mid1 = new THREE.Vector3().lerpVectors(start, end, 0.33).addScaledVector(perpendicular, offset1)
         const mid2 = new THREE.Vector3().lerpVectors(start, end, 0.66).addScaledVector(perpendicular, offset2)
 
-        // ↓ Increased tension toward 1.0 makes curve closer to straight lines
         const curve = new THREE.CatmullRomCurve3([start, mid1, mid2, end], false, 'catmullrom', 0.99)
 
         this.newDirection = new THREE.Vector3().subVectors(end, start).normalize()
@@ -142,16 +170,12 @@ export default class Dog {
             this.debugCurve = new THREE.Line(geometry, material)
             this.scene.add(this.debugCurve)
         }
-
         return curve
     }
 
-
-    /**
-     * Calculates turn based on the dog's current facing direction
-     */
     getDirectionChange(model, newTargetDirection) {
         const currentForward = new THREE.Vector3(0, 0, 1).applyQuaternion(model.quaternion).normalize()
+
         currentForward.y = 0
         newTargetDirection.y = 0
 
@@ -160,20 +184,15 @@ export default class Dog {
 
         const cross = new THREE.Vector3().crossVectors(currentForward, newTargetDirection)
         const crossY = cross.y
+        
         const dot = THREE.MathUtils.clamp(currentForward.dot(newTargetDirection), -1, 1)
         const signedAngle = Math.atan2(crossY, dot)
         const signedDeg = THREE.MathUtils.radToDeg(signedAngle)
         const angleDeg = Math.abs(signedDeg)
 
-        let side = 'Straight'
-        if (signedDeg > 0.001) side = 'Left'
-        else if (signedDeg < -0.001) side = 'Right'
-
-        console.log(
-            `%c[Dog Direction] %cTurn ${side} (${angleDeg.toFixed(1)}°) [Model-Oriented]`,
-            'color:#ffaa00;font-weight:bold;',
-            'color:#fff;'
-        )
+        let side = TURN_SIDES.STRAIGHT
+        if (signedDeg > 0.001) side = TURN_SIDES.LEFT
+        else if (signedDeg < -0.001) side = TURN_SIDES.RIGHT
 
         this.turnAngle = angleDeg
         this.turnDirection = side
@@ -190,13 +209,8 @@ export default class Dog {
         const actualDir = this.newDirection.clone().normalize()
 
         let visualTurnOffsetDeg = 0
-        if (this.turnDirection === 'Left') {
-            if (this.turnAngle >= 150) visualTurnOffsetDeg = 80
-            else if (this.turnAngle >= 40) visualTurnOffsetDeg = 40
-        } else if (this.turnDirection === 'Right') {
-            if (this.turnAngle >= 150) visualTurnOffsetDeg = -80
-            else if (this.turnAngle >= 40) visualTurnOffsetDeg = -40
-        }
+        if (this.turnDirection === TURN_SIDES.LEFT && this.turnAngle >= 40) visualTurnOffsetDeg = 60
+        else if (this.turnDirection === TURN_SIDES.RIGHT && this.turnAngle >= 40) visualTurnOffsetDeg = -60
 
         const correctedDir = actualDir.clone()
         const correctionMatrix = new THREE.Matrix4().makeRotationY(
@@ -205,34 +219,34 @@ export default class Dog {
         correctedDir.applyMatrix4(correctionMatrix).normalize()
 
         this.startQuaternion = this.model.quaternion.clone()
-        this.endQuaternion = new THREE.Quaternion().setFromUnitVectors(forward, correctedDir)
+        this.endQuaternion = new THREE.Quaternion().setFromUnitVectors(
+            forward,
+            correctedDir
+        )
         this.turnProgress = 0
         this.isTurning = true
 
-        let turnAnim = 'Walk_F_IP'
-        if (this.turnDirection === 'Left') {
-            if (this.turnAngle < 10) turnAnim = 'Walk_F_IP'
-            else if (this.turnAngle < 50) turnAnim = 'Turn_L_IP'
-            else if (this.turnAngle < 135) turnAnim = 'Turn_L_IP'
-            else turnAnim = 'Turn_L180_IP'
-        } else if (this.turnDirection === 'Right') {
-            if (this.turnAngle < 10) turnAnim = 'Walk_F_IP'
-            else if (this.turnAngle < 50) turnAnim = 'Turn_R_IP'
-            else if (this.turnAngle < 135) turnAnim = 'Turn_R_IP'
-            else turnAnim = 'Turn_R180_IP'
+        let turnAnim = ANIMATIONNAMES.WALK_FORWARD
+
+        if (this.turnDirection === TURN_SIDES.LEFT) {
+            if (this.turnAngle < 10) turnAnim = ANIMATIONNAMES.WALK_FORWARD
+            else if (this.turnAngle < 135) turnAnim = ANIMATIONNAMES.TURN_LEFT
+            else turnAnim = ANIMATIONNAMES.TURN_LEFT_180
+        } 
+        else if (this.turnDirection === TURN_SIDES.RIGHT) {
+            if (this.turnAngle < 10) turnAnim = ANIMATIONNAMES.WALK_FORWARD
+            else if (this.turnAngle < 135) turnAnim = ANIMATIONNAMES.TURN_RIGHT
+            else turnAnim = ANIMATIONNAMES.TURN_RIGHT_180
         }
 
         this.animation.play(turnAnim)
-        if (this.turnAngle < 10) this.turnDuration = 1
-        else if (this.turnAngle < 45) this.turnDuration = 1
-        else if (this.turnAngle < 90) this.turnDuration = 1
-        else if (this.turnAngle < 135) this.turnDuration = 1
-        else this.turnDuration = 1
+
+        const clip = this.animation.actions[turnAnim]?._clip
+        const clipDuration = clip ? clip.duration : 1.0
+        const normalized = THREE.MathUtils.clamp((this.turnAngle - 10) / (135 - 10), 0, 1)
+        this.turnDuration = THREE.MathUtils.lerp(clipDuration * 0.8, clipDuration * 1.2, normalized)
     }
 
-    /**
-     * Play next idle animation in sequence after each walk.
-     */
     playSequentialIdle() {
         if (!this.idleAnimations.length) return
 
@@ -243,7 +257,8 @@ export default class Dog {
         this.animation.play(idleName)
 
         const duration = idleAction._clip.duration * 1000
-        this.currentIdleIndex = (this.currentIdleIndex + 1) % this.idleAnimations.length
+        this.currentIdleIndex =
+            (this.currentIdleIndex + 1) % this.idleAnimations.length
         setTimeout(() => this.startNewPath(), duration)
     }
 
@@ -251,11 +266,11 @@ export default class Dog {
         this.animation.mixer.update(this.time.delta * 0.001)
 
         if (this.isTurning) {
-            this.turnProgress += (this.time.delta / 1000) / this.turnDuration
+            this.turnProgress += this.time.delta / 1000 / this.turnDuration
             if (this.turnProgress >= 1) {
                 this.turnProgress = 1
                 this.isTurning = false
-                this.animation.play('Walk_F_IP')
+                this.animation.play(ANIMATIONNAMES.WALK_FORWARD)
             }
 
             this.model.quaternion.slerpQuaternions(
@@ -267,7 +282,6 @@ export default class Dog {
         }
 
         if (!this.curve) return
-
         const totalLength = this.curve.getLength()
         const distancePerFrame = this.speed * this.time.delta
         const currentDistance = THREE.MathUtils.clamp(
@@ -280,6 +294,8 @@ export default class Dog {
         if (this.curveProgress >= 1) {
             if (!this.reached) {
                 this.reached = true
+                const finalPos = this.curve.getPointAt(1)
+                this.model.position.copy(finalPos)
                 this.playSequentialIdle()
             }
             return
@@ -295,5 +311,4 @@ export default class Dog {
         )
         this.model.quaternion.slerp(targetQuat, 0.1)
     }
-
 }

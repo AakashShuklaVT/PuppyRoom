@@ -119,12 +119,7 @@ export const ANIMATIONS_BY_TYPE = {
     idle: [
         'Idle_1',
         'Idle_2',
-        'Idle_3',
         'Idle_7',
-        'Crouch_Idle_loop_1',
-        'Crouch_Idle_loop_2',
-        'Sitting_loop_1',
-        'Sitting_loop_2',
         'Pick_up_idle',
     ],
 
@@ -174,4 +169,10 @@ export const CROSS_FADE_TIMINGS_FROM_WALK = {
     'Sitting_loop_1': 0.3,
     'Sitting_loop_2': 0.2,
     'Pick_up_idle': 0.2,
+}
+
+export const TURN_SIDES = {
+    STRAIGHT: 'Straight',
+    LEFT: 'Left',
+    RIGHT: 'Right',
 }
