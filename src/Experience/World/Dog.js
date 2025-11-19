@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import Experience from '../Experience.js'
-import { ANIMATION_NAMES as RAW_NAMES, ANIMATIONS_BY_TYPE, TURN_SIDES, FADE_PROFILES } from '../Configs/AnimationData.js'
+import { ANIMATION_NAMES as RAW_NAMES, ANIMATIONS_BY_TYPE, TURN_SIDES } from '../../../static/Configs/AnimationData.js'
 
 const ROOM_DIMENSIONS = { width: 4.8, height: 4.8 }
 
@@ -19,7 +19,7 @@ export default class Dog {
         this.resources = exp.resources
         this.time = exp.time
         this.debug = exp.debug
-
+        this.camera = exp.camera.instance
         this.modelScaling = 1.6
 
         this.curve = null
@@ -34,6 +34,8 @@ export default class Dog {
         this.turnDirection = 'Straight'
 
         this.idleAnimations = ANIMATIONS_BY_TYPE.idle
+
+        this.stoppingAnimation = 'Idle_7'
         this.currentIdleIndex = 0
 
         if (this.debug.active) this.debugFolder = this.debug.ui.addFolder('dog')
@@ -44,6 +46,9 @@ export default class Dog {
 
         const firstIdle = this.idleAnimations[0]
         const idleAction = this.animation.actions[firstIdle]
+
+        this.elapsedIdleTime = 0
+        this.idleActionDuration = idleAction._clip.duration * 1000
 
         if (idleAction) {
             this.animation.play(firstIdle)
@@ -70,64 +75,39 @@ export default class Dog {
         this.animation = {}
         this.animation.mixer = new THREE.AnimationMixer(this.model)
         this.animation.actions = {}
-        this.animation.fade = null
 
         for (const name of RAW_NAMES) {
             const clip = this.resource.animations[RAW_NAMES.indexOf(name)]
             const action = this.animation.mixer.clipAction(clip)
-            action.enabled = true
-            action.setEffectiveWeight(0)
             action.setLoop(THREE.LoopRepeat)
             action.clampWhenFinished = true
             this.animation.actions[name] = action
         }
 
-        this.animation.play = (name, fadeDuration = null, fadeProfile = null) => {
+        this.animation.play = name => {
             const newAction = this.animation.actions[name]
             const oldAction = this.animation.actions.current
             if (!newAction || newAction === oldAction) return
 
-            let transitionKey = null
+            const isWalkToIdle =
+                oldAction &&
+                oldAction._clip.name.includes('Walk') &&
+                this.idleAnimations.includes(name)
+
+            const fadeDuration = isWalkToIdle ? 0.4 : 0.3
+
             if (oldAction) {
-                const from = oldAction._clip.name
-                const to = newAction._clip.name
-
-                if (from.includes('Idle') && to.includes('Turn')) transitionKey = 'IDLE_TO_TURN'
-                else if (from.includes('Turn') && to.includes('Walk')) transitionKey = 'TURN_TO_WALK'
-                else if (from.includes('Walk') && to.includes('Idle')) transitionKey = 'WALK_TO_IDLE'
+                newAction.reset()
+                newAction.crossFadeFrom(oldAction, fadeDuration, true)
             }
 
-            if (transitionKey && !fadeProfile && !fadeDuration) {
-                const preset = FADE_PROFILES[transitionKey]
-                fadeDuration = preset.duration
-                fadeProfile = preset.profile
-            }
-
-            if (!fadeDuration) fadeDuration = 0.6
-
-            newAction.reset().play()
-            if (oldAction) oldAction.play()
-
-            this.animation.fade = {
-                from: oldAction,
-                to: newAction,
-                duration: fadeDuration,
-                elapsed: 0,
-                profile: fadeProfile || null
-            }
-
-            if (oldAction) oldAction.setEffectiveWeight(1)
-            newAction.setEffectiveWeight(0)
-
+            newAction.play()
             this.animation.actions.current = newAction
-            console.log(this.animation.actions.current._clip.duration, this.animation.actions.current._clip.name);
         }
 
         const idle = this.idleAnimations[0]
-        const idleAction = this.animation.actions[idle]
-        idleAction.play()
-        idleAction.setEffectiveWeight(1)
-        this.animation.actions.current = idleAction
+        this.animation.actions.current = this.animation.actions[idle]
+        this.animation.actions.current.play()
     }
 
     generateRandomCurve() {
@@ -272,42 +252,35 @@ export default class Dog {
         this.turnDuration = THREE.MathUtils.lerp(clipDuration * 0.8, clipDuration * 1.2, normalized)
     }
 
-    playSequentialIdle() {
+    playSequentialIdle(first = false) {
         if (!this.idleAnimations.length) return
 
-        const idleName = this.idleAnimations[this.currentIdleIndex]
-        const idleAction = this.animation.actions[idleName]
-        if (!idleAction) return
+        if (first) {
+            const idleName = this.stoppingAnimation
+            const idleAction = this.animation.actions[idleName]
+            if (!idleAction) return
 
-        this.animation.play(idleName)
+            this.animation.play(idleName)
 
-        const duration = idleAction._clip.duration * 1000
-        this.currentIdleIndex =
-            (this.currentIdleIndex + 1) % this.idleAnimations.length
-        setTimeout(() => this.startNewPath(), duration)
-    }
+            const duration = idleAction._clip.duration * 1000
+            setTimeout(() => this.playSequentialIdle(), duration)
+        }
+        else {
+            const idleName = this.idleAnimations[this.currentIdleIndex]
+            const idleAction = this.animation.actions[idleName]
+            if (!idleAction) return
 
-    updateFade(delta) {
-        const fade = this.animation.fade
-        if (!fade) return
+            this.animation.play(idleName)
 
-        fade.elapsed += delta
-        const t = Math.min(fade.elapsed / fade.duration, 1)
-
-        const smoothT = THREE.MathUtils.smoothstep(t, 0, 1)
-
-        if (fade.from) fade.from.setEffectiveWeight(1 - smoothT)
-        fade.to.setEffectiveWeight(smoothT)
-
-        if (t >= 1) {
-            if (fade.from) fade.from.stop()
-            this.animation.fade = null
+            const duration = idleAction._clip.duration * 1000
+            this.currentIdleIndex =
+                (this.currentIdleIndex + 1) % this.idleAnimations.length
+            setTimeout(() => this.startNewPath(), duration)
         }
     }
 
     update() {
         this.animation.mixer.update(this.time.delta * 0.001)
-        this.updateFade(this.time.delta * 0.001)
 
         if (this.isTurning) {
             this.turnProgress += this.time.delta / 1000 / this.turnDuration
@@ -338,10 +311,7 @@ export default class Dog {
         if (this.curveProgress >= 1) {
             if (!this.reached) {
                 this.reached = true
-                // const finalPos = this.curve.getPointAt(0.99)
-                // const finalPos = this.curve.getPointAt(1)
-                // this.model.position.copy(finalPos)
-                this.playSequentialIdle()
+                this.playSequentialIdle(true)
             }
             return
         }

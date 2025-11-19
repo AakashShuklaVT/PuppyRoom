@@ -116,11 +116,12 @@ export const ANIMATION_NAMES = [
 ]
 
 export const ANIMATIONS_BY_TYPE = {
+
     idle: [
         'Idle_1',
         'Idle_2',
-        'Idle_7',
         'Pick_up_idle',
+        'Scratching'
     ],
 
     walk: [
@@ -177,10 +178,10 @@ export const FADE_PROFILES = {
     },
 
     WALK_TO_IDLE: {
-        duration: 0.2,
+        duration: 0.3,
         profile: [
-            { end: 0.2, startW: 0, endW: 0.85 }, 
-            { end: 1.0, startW: 0.85, endW: 1.0 } 
+            { end: 0.2, startW: 0, endW: 0.85 },
+            { end: 1.0, startW: 0.85, endW: 1.0 }
         ]
     }
 }
