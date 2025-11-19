@@ -6,11 +6,12 @@ import Room from './Room.js'
 export default class World {
     constructor() {
         this.experience = new Experience()
+        this.eventEmitter = this.experience.eventEmitter
         this.scene = this.experience.scene
         this.resources = this.experience.resources
         
         // Wait for resources
-        this.resources.on('ready', () => {
+        this.eventEmitter.on('ready', () => {
             this.dog = new Dog()
             this.room = new Room()
             this.environment = new Environment()

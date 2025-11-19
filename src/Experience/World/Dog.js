@@ -22,6 +22,8 @@ export default class Dog {
         this.experience = new Experience()
         this.scene = this.experience.scene
         this.resources = this.experience.resources
+        this.eventEmitter = this.experience.eventEmitter
+        
         this.time = this.experience.time
         this.debug = this.experience.debug
         this.camera = this.experience.camera.instance
@@ -337,7 +339,8 @@ export default class Dog {
         if (!bone) return;
 
         const name = this.resolveBoneName(bone.name);
-        console.log(name);
+
+        this.eventEmitter.trigger('bodyPartClicked', [name])
 
         if (!this.pointIndicator) {
             this.pointIndicator = new PointIndicator(128, 'red');
@@ -387,6 +390,10 @@ export default class Dog {
 
     update() {
         this.animation.mixer.update(this.time.delta * 0.001)
+
+        if (this.pointIndicator) {
+            this.pointIndicator.update(this.time.delta / 1000)
+        }
 
         if (this.isTurning) {
             this.turnProgress += this.time.delta / 1000 / this.turnDuration

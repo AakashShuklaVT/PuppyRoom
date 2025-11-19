@@ -1,12 +1,10 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
-import EventEmitter from './EventEmitter.js'
 
-export default class Resources extends EventEmitter {
-    constructor(sources) {
-        super()
-
+export default class Resources {
+    constructor(sources, eventEmitter) {
         this.sources = sources
+        this.eventEmitter = eventEmitter
 
         this.items = {}
         this.toLoad = this.sources.length
@@ -69,7 +67,7 @@ export default class Resources extends EventEmitter {
         this.loadingBar.style.width = `${progress * 100}%`
 
         if (this.loaded === this.toLoad) {
-            this.trigger('ready')
+            this.eventEmitter.trigger('ready')
             setTimeout(() => {
                 this.loadingScreen.style.display = 'none'
             }, 500)

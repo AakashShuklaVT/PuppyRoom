@@ -18,6 +18,8 @@ export default class PointIndicator {
         this.sprite = new THREE.Sprite(this.material);
         this.sprite.scale.set(0.1, 0.1, 0.1); 
         this.sprite.visible = false;
+        this.elapsedTime = 0;
+        this.visibleTime = 5;
     }
 
     drawDot() {
@@ -62,38 +64,6 @@ export default class PointIndicator {
         c.restore();
     }
 
-
-    // drawDot() {
-    //     const c = this.ctx;
-    //     const s = this.size;
-    //     const h = s / 2;
-
-    //     c.clearRect(0, 0, s, s);
-    //     c.save();
-    //     c.translate(h, h);
-
-    //     const col = "#ffffff";   
-    //     const edge = "#000000";
-
-    //     c.beginPath();
-    //     c.arc(0, 0, s * 0.35, 0, Math.PI * 2);
-    //     c.lineWidth = s * 0.12;
-    //     c.strokeStyle = edge;
-    //     c.stroke();
-
-    //     c.beginPath();
-    //     c.arc(0, 0, s * 0.2, 0, Math.PI * 2);
-    //     c.fillStyle = col;
-    //     c.fill();
-
-    //     c.beginPath();
-    //     c.arc(0, 0, s * 0.07, 0, Math.PI * 2);
-    //     c.fillStyle = edge;
-    //     c.fill();
-
-    //     c.restore();
-    // }
-
     attachToScene(scene) {
         scene.add(this.sprite);
     }
@@ -105,5 +75,18 @@ export default class PointIndicator {
 
     hide() {
         this.sprite.visible = false;
+    }
+
+    update(deltaTime) {
+        if(this.sprite.visible) {
+            this.elapsedTime += deltaTime;
+            if(this.elapsedTime >= this.visibleTime) {
+                this.hide();
+                this.elapsedTime = 0;
+            }
+        }
+        else {
+            this.elapsedTime = 0;
+        }
     }
 }

@@ -9,6 +9,8 @@ import World from './World/World.js'
 import Resources from './Utils/Resources.js'
 import sources from './sources.js'
 import PostProcessing from './World/PostProcessing.js'
+import UIManager from './UI/UIManager.js'
+import EventEmitter from './Utils/EventEmitter.js'
 
 let instance = null
 
@@ -31,7 +33,9 @@ export default class Experience {
         this.sizes = new Sizes()
         this.time = new Time()
         this.scene = new THREE.Scene()
-        this.resources = new Resources(sources)
+        this.eventEmitter = new EventEmitter()
+        this.resources = new Resources(sources, this.eventEmitter)
+        this.uiManager = new UIManager()
         this.camera = new Camera()   
         this.ssrObjects = []
         this.world = new World()
