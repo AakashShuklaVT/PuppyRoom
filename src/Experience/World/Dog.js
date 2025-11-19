@@ -230,25 +230,24 @@ export default class Dog {
         )
         this.turnProgress = 0
         this.isTurning = true
-
+        this.minAngle = 10
+        this.maxAngle = 135
         let turnAnim = ANIMATIONNAMES.WALK_FORWARD
 
         if (this.turnDirection === TURN_SIDES.LEFT) {
-            if (this.turnAngle < 10) turnAnim = ANIMATIONNAMES.WALK_FORWARD
-            else if (this.turnAngle < 135) turnAnim = ANIMATIONNAMES.TURN_LEFT
-            else turnAnim = ANIMATIONNAMES.TURN_LEFT_180
+            if (this.turnAngle < this.minAngle) turnAnim = ANIMATIONNAMES.WALK_FORWARD
+            else if (this.turnAngle < this.maxAngle) turnAnim = ANIMATIONNAMES.TURN_LEFT
         }
         else if (this.turnDirection === TURN_SIDES.RIGHT) {
-            if (this.turnAngle < 10) turnAnim = ANIMATIONNAMES.WALK_FORWARD
-            else if (this.turnAngle < 135) turnAnim = ANIMATIONNAMES.TURN_RIGHT
-            else turnAnim = ANIMATIONNAMES.TURN_RIGHT_180
+            if (this.turnAngle < this.minAngle) turnAnim = ANIMATIONNAMES.WALK_FORWARD
+            else if (this.turnAngle < this.maxAngle) turnAnim = ANIMATIONNAMES.TURN_RIGHT
         }
 
         this.animation.play(turnAnim)
 
         const clip = this.animation.actions[turnAnim]?._clip
         const clipDuration = clip ? clip.duration : 1.0
-        const normalized = THREE.MathUtils.clamp((this.turnAngle - 10) / (135 - 10), 0, 1)
+        const normalized = THREE.MathUtils.clamp((this.turnAngle - this.minAngle) / (this.maxAngle - this.minAngle), 0, 1)
         this.turnDuration = THREE.MathUtils.lerp(clipDuration * 0.8, clipDuration * 1.2, normalized)
     }
 
