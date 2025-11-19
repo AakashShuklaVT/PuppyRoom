@@ -20,8 +20,6 @@ export default class Renderer
             canvas: this.canvas,
             antialias: true
         })
-        // additive blending
-        // this.instance.toneMapping = THREE.AdditiveBlending
         this.instance.toneMapping = THREE.CineonToneMapping
         this.instance.toneMappingExposure = 1.75
         this.instance.shadowMap.enabled = true

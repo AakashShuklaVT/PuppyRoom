@@ -7,6 +7,12 @@
 html,
 body {
     overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    margin: 0;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    background: var(--bg);
+    color: var(--white)
 }
 
 .webgl {
@@ -24,20 +30,6 @@ body {
     --white: #e6eef6;
 }
 
-* {
-    box-sizing: border-box
-}
-
-html,
-body {
-    height: 100vh;
-    width: 100vw;
-    margin: 0;
-    font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-    background: var(--bg);
-    color: var(--white)
-}
-
 .loading-screen {
     position: fixed;
     top: 0;
@@ -48,7 +40,7 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 9999;
+    z-index: 100;
 }
 
 .loading-bar {
@@ -81,7 +73,6 @@ body {
     z-index: 10;
 }
 
-/* simple checkbox style */
 .chk {
     display: inline-flex;
     align-items: center;

@@ -1,6 +1,11 @@
 import * as THREE from 'three'
 import Experience from '../Experience.js'
 
+const ROOM_CHILDREN = {
+    Wall : 'Wall',
+    Floor : 'Floor',
+}
+
 export default class Room {
     constructor() {
         this.experience = new Experience()
@@ -22,11 +27,11 @@ export default class Room {
             if (child instanceof THREE.Mesh) {
                 child.receiveShadow = true
             }
-            if (child.name.includes('Wall')) {
-                child.material.depthWrite = false
+            if (child.name.includes(ROOM_CHILDREN.Wall)) {
+                child.material.side = THREE.FrontSide
                 child.material.color = new THREE.Color('#b9b8b8')
             }
-            if (child.name.includes('Floor')) {
+            if (child.name.includes(ROOM_CHILDREN.Floor)) {
                 this.experience.ssrObjects.push(child)
             }
         })

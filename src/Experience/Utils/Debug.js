@@ -6,7 +6,7 @@ export default class Debug
     {
         this.active = window.location.hash === '#debug'
 
-        if(this.active)
+        if(false)
         {
             this.ui = new GUI()
         }

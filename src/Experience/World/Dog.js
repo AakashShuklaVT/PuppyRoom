@@ -1,6 +1,8 @@
 import * as THREE from 'three'
 import Experience from '../Experience.js'
 import { ANIMATION_NAMES as RAW_NAMES, ANIMATIONS_BY_TYPE, TURN_SIDES } from '../../../static/Configs/AnimationData.js'
+import { BONES_LABEL } from '../../../static/Configs/BonesLabel.js'
+import PointIndicator from '../Utils/PointIndicator.js'
 
 const ROOM_DIMENSIONS = { width: 4.8, height: 4.8 }
 
@@ -10,21 +12,27 @@ const ANIMATIONNAMES = {
     TURN_RIGHT: 'Turn_R_IP',
     TURN_LEFT_180: 'Turn_L180_IP',
     TURN_RIGHT_180: 'Turn_R180_IP',
+    RUN_FORWARD : 'Run_F_IP',
+    RUN_LEFT: 'Run_L_IP',
+    RUN_RIGHT: 'Run_R_IP',
 }
 
 export default class Dog {
     constructor() {
-        const exp = new Experience()
-        this.scene = exp.scene
-        this.resources = exp.resources
-        this.time = exp.time
-        this.debug = exp.debug
-        this.camera = exp.camera.instance
-        this.modelScaling = 1.6
+        this.experience = new Experience()
+        this.scene = this.experience.scene
+        this.resources = this.experience.resources
+        this.time = this.experience.time
+        this.debug = this.experience.debug
+        this.camera = this.experience.camera.instance
 
         this.curve = null
         this.curveProgress = 0
+
         this.speed = 0.0006
+        this.walkSpeed = 0.0006
+        this.runSpeed  = 0.002
+
         this.reached = false
 
         this.isTurning = false
@@ -35,7 +43,7 @@ export default class Dog {
 
         this.idleAnimations = ANIMATIONS_BY_TYPE.idle
 
-        this.stoppingAnimation = 'Idle_7'
+        this.stoppingAnimation = 'Idle_7'               
         this.currentIdleIndex = 0
 
         if (this.debug.active) this.debugFolder = this.debug.ui.addFolder('dog')
@@ -43,9 +51,10 @@ export default class Dog {
         this.resource = this.resources.items.dogModel
         this.setModel()
         this.setAnimation()
-
+        this.setupRaycaster()
+        this.addEventListeners()
         const firstIdle = this.idleAnimations[0]
-        const idleAction = this.animation.actions[firstIdle]
+        const idleAction = this.animation.actions[firstIdle]    
 
         this.elapsedIdleTime = 0
         this.idleActionDuration = idleAction._clip.duration * 1000
@@ -54,13 +63,11 @@ export default class Dog {
             this.animation.play(firstIdle)
             setTimeout(() => this.startNewPath(), idleAction._clip.duration * 1000)
         }
-        else {
-            this.startNewPath()
-        }
     }
 
     setModel() {
         this.model = this.resource.scene
+        this.modelScaling = 1.6
         this.model.scale.set(this.modelScaling, this.modelScaling, this.modelScaling)
         this.model.traverse(child => {
             if (child.isMesh) {
@@ -89,12 +96,19 @@ export default class Dog {
             const oldAction = this.animation.actions.current
             if (!newAction || newAction === oldAction) return
 
-            const isWalkToIdle =
-                oldAction &&
-                oldAction._clip.name.includes('Walk') &&
-                this.idleAnimations.includes(name)
-
-            const fadeDuration = isWalkToIdle ? 0.4 : 0.3
+            let fadeDuration = 0.3
+            if (oldAction._clip.name.includes('Walk') && newAction._clip.name.includes('dle')) {
+                fadeDuration = 0.4
+            }
+            else if (oldAction._clip.name.includes('dle') && newAction._clip.name.includes('Walk')) {
+                fadeDuration = 0.4
+            }
+            else if (oldAction._clip.name.includes('Run') && newAction._clip.name.includes('dle')) {
+                fadeDuration = 0.2
+            }
+            else if (oldAction._clip.name.includes('Scratching') && newAction._clip.name.includes('Run')) {
+                fadeDuration = 0.2
+            }
 
             if (oldAction) {
                 newAction.reset()
@@ -104,10 +118,43 @@ export default class Dog {
             newAction.play()
             this.animation.actions.current = newAction
         }
-
+        
         const idle = this.idleAnimations[0]
         this.animation.actions.current = this.animation.actions[idle]
         this.animation.actions.current.play()
+    }
+
+    setupRaycaster() {
+        this.raycaster = new THREE.Raycaster();
+        this.pointer = new THREE.Vector2();
+        this.camera = this.experience.camera.instance;
+    }
+    
+    addEventListeners() {
+        this.dragging = false;
+    
+        window.addEventListener('pointerdown', e => {
+            this.dragging = true;
+            this.updatePointer(e);
+            this.getClickedPartName();
+        });
+    
+        window.addEventListener('pointermove', e => {
+            if (!this.dragging) return;
+            this.updatePointer(e);
+            this.getClickedPartName();
+        });
+    
+        window.addEventListener('pointerup', () => {
+            this.dragging = false;
+        });
+    }
+
+    updatePointer(e) {
+        if (!this.dragging) return;
+        this.pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+        this.pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+        this.raycaster.setFromCamera(this.pointer, this.camera);
     }
 
     generateRandomCurve() {
@@ -210,6 +257,13 @@ export default class Dog {
 
         this.getDirectionChange(this.model, this.newDirection)
 
+        const start = this.model.position.clone()
+        const end = this.curve.points[this.curve.points.length - 1].clone()
+        const dist = start.distanceTo(end)
+        const runThreshold = 2.5
+        this.shouldRun = dist >= runThreshold
+        this.speed = this.shouldRun ? this.runSpeed : this.walkSpeed
+
         const forward = new THREE.Vector3(0, 0, 1)
         const actualDir = this.newDirection.clone().normalize()
 
@@ -224,31 +278,27 @@ export default class Dog {
         correctedDir.applyMatrix4(correctionMatrix).normalize()
 
         this.startQuaternion = this.model.quaternion.clone()
-        this.endQuaternion = new THREE.Quaternion().setFromUnitVectors(
-            forward,
-            correctedDir
-        )
+        this.endQuaternion = new THREE.Quaternion().setFromUnitVectors(forward, correctedDir)
         this.turnProgress = 0
-        this.isTurning = true
+        this.isTurning = true                   
+        this.minAngle = 10
 
-        let turnAnim = ANIMATIONNAMES.WALK_FORWARD
+        let turnAnim
 
         if (this.turnDirection === TURN_SIDES.LEFT) {
-            if (this.turnAngle < 10) turnAnim = ANIMATIONNAMES.WALK_FORWARD
-            else if (this.turnAngle < 135) turnAnim = ANIMATIONNAMES.TURN_LEFT
-            else turnAnim = ANIMATIONNAMES.TURN_LEFT_180
+            if (this.turnAngle < this.minAngle) turnAnim = ANIMATIONNAMES.WALK_FORWARD
+            else if (this.turnAngle < this.maxTurnAngle) turnAnim = ANIMATIONNAMES.TURN_LEFT
         }
         else if (this.turnDirection === TURN_SIDES.RIGHT) {
-            if (this.turnAngle < 10) turnAnim = ANIMATIONNAMES.WALK_FORWARD
-            else if (this.turnAngle < 135) turnAnim = ANIMATIONNAMES.TURN_RIGHT
-            else turnAnim = ANIMATIONNAMES.TURN_RIGHT_180
+            if (this.turnAngle < this.minAngle) turnAnim = ANIMATIONNAMES.WALK_FORWARD
+            else if (this.turnAngle < this.maxTurnAngle) turnAnim = ANIMATIONNAMES.TURN_RIGHT
         }
-
-        this.animation.play(turnAnim)
+        
+        this.animation.play(turnAnim)       
 
         const clip = this.animation.actions[turnAnim]?._clip
         const clipDuration = clip ? clip.duration : 1.0
-        const normalized = THREE.MathUtils.clamp((this.turnAngle - 10) / (135 - 10), 0, 1)
+        const normalized = THREE.MathUtils.clamp((this.turnAngle - this.minAngle) / (this.maxTurnAngle - this.minAngle), 0, 1)
         this.turnDuration = THREE.MathUtils.lerp(clipDuration * 0.8, clipDuration * 1.2, normalized)
     }
 
@@ -279,6 +329,62 @@ export default class Dog {
         }
     }
 
+    getClickedPartName() {
+        const hit = this.getHit();
+        if (!hit) return;
+
+        const bone = this.getNearestBone(hit);
+        if (!bone) return;
+
+        const name = this.resolveBoneName(bone.name);
+        console.log(name);
+
+        if (!this.pointIndicator) {
+            this.pointIndicator = new PointIndicator(128, 'red');
+        }
+
+        const sprite = this.pointIndicator.sprite;
+        if (sprite.parent) sprite.parent.remove(sprite);
+
+        bone.add(sprite);
+
+        const localPos = bone.worldToLocal(hit.point.clone());
+        sprite.position.copy(localPos);
+        sprite.visible = true;
+    }
+
+    getHit() {
+        const hits = this.raycaster.intersectObject(this.model, true);
+        if (!hits.length) return null;
+
+        const h = hits[0];
+        if (!h.object.isSkinnedMesh) return null;
+
+        return h;
+    }
+
+    getNearestBone(hit) {
+        const pos = hit.point.clone();
+        let best = null;
+        let bestDist = Infinity;
+        
+        for (const bone of hit.object.skeleton.bones) {
+            const inv = new THREE.Matrix4().copy(bone.matrixWorld).invert();
+            const local = pos.clone().applyMatrix4(inv);
+            const d = local.length();
+
+            if (d < bestDist) {
+                bestDist = d;
+                best = bone;
+            }
+        }
+        return best;
+    }
+
+    resolveBoneName(rawName) {
+        return BONES_LABEL[rawName] || rawName;
+    }
+
     update() {
         this.animation.mixer.update(this.time.delta * 0.001)
 
@@ -287,7 +393,12 @@ export default class Dog {
             if (this.turnProgress >= 1) {
                 this.turnProgress = 1
                 this.isTurning = false
-                this.animation.play(ANIMATIONNAMES.WALK_FORWARD)
+
+                const next = this.shouldRun
+                    ? ANIMATIONNAMES.RUN_FORWARD
+                    : ANIMATIONNAMES.WALK_FORWARD
+
+                this.animation.play(next)
             }
 
             this.model.quaternion.slerpQuaternions(
@@ -301,11 +412,7 @@ export default class Dog {
         if (!this.curve) return
         const totalLength = this.curve.getLength()
         const distancePerFrame = this.speed * this.time.delta
-        const currentDistance = THREE.MathUtils.clamp(
-            this.curveProgress * totalLength + distancePerFrame,
-            0,
-            totalLength
-        )
+        const currentDistance = THREE.MathUtils.clamp(this.curveProgress * totalLength + distancePerFrame, 0, totalLength)
         this.curveProgress = currentDistance / totalLength
 
         if (this.curveProgress >= 1) {
@@ -320,10 +427,7 @@ export default class Dog {
         this.model.position.lerp(position, 0.15)
 
         const tangent = this.curve.getTangentAt(this.curveProgress).normalize()
-        const targetQuat = new THREE.Quaternion().setFromUnitVectors(
-            new THREE.Vector3(0, 0, 1),
-            tangent
-        )
+        const targetQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), tangent)
         this.model.quaternion.slerp(targetQuat, 0.1)
     }
 }

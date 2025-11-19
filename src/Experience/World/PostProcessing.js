@@ -137,7 +137,7 @@ export default class PostProcessing {
 
     addVignettePass() {
         const vignettePass = new ShaderPass(VignetteShader)
-        vignettePass.uniforms["offset"].value = 0.25  
+        vignettePass.uniforms["offset"].value = 0.25
         vignettePass.uniforms["darkness"].value = 3  
         this.effectComposer.addPass(vignettePass)
 
