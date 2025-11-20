@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import Experience from '../Experience.js'
-import { ANIMATION_NAMES as RAW_NAMES, ANIMATIONS_BY_TYPE, TURN_SIDES, FADE_RULES } from '../../../static/Configs/AnimationData.js'
+import { ANIMATION_NAMES as RAW_NAMES, ANIMATIONS_BY_TYPE, TURN_SIDES, FADE_RULES, ANIMATION_SEQUENCES, ANIMATION_LOOP_FLAGS } from '../../../static/Configs/AnimationData.js'
 import { BONES_LABEL } from '../../../static/Configs/BonesLabel.js'
 import PointIndicator from '../Utils/PointIndicator.js'
 
@@ -51,6 +51,7 @@ export default class Dog {
         if (this.debug.active) this.debugFolder = this.debug.ui.addFolder('dog')
 
         this.resource = this.resources.items.dogModel
+
         this.setModel()
         this.setAnimation()
         this.setupRaycaster()
@@ -88,8 +89,12 @@ export default class Dog {
         for (const name of RAW_NAMES) {
             const clip = this.resource.animations[RAW_NAMES.indexOf(name)]
             const action = this.animation.mixer.clipAction(clip)
-            action.setLoop(THREE.LoopRepeat)
+
+            const shouldLoop = ANIMATION_LOOP_FLAGS[name] === true
+
+            action.setLoop(shouldLoop ? THREE.LoopRepeat : THREE.LoopOnce)
             action.clampWhenFinished = true
+
             this.animation.actions[name] = action
         }
 
@@ -110,7 +115,7 @@ export default class Dog {
 
     getFadeDuration(prevAction, nextAction) {
         if (!prevAction) return 0.3
-
+        if (prevAction === nextAction) return 0
         const a = prevAction._clip.name
         const b = nextAction._clip.name
 
@@ -314,17 +319,53 @@ export default class Dog {
             setTimeout(() => this.playSequentialIdle(), duration)
         }
         else {
-            const idleName = this.idleAnimations[this.currentIdleIndex]
-            const idleAction = this.animation.actions[idleName]
-            if (!idleAction) return
+            const roll = Math.random()
+            const chance = 0.3
+            if (roll < chance) {
+                const idleName = this.idleAnimations[
+                    Math.floor(Math.random() * this.idleAnimations.length)
+                ]
+                const idleAction = this.animation.actions[idleName]
+                if (!idleAction) return
 
-            this.animation.play(idleName)
+                this.animation.play(idleName)
 
-            const duration = idleAction._clip.duration * 1000
-            this.currentIdleIndex =
-                (this.currentIdleIndex + 1) % this.idleAnimations.length
-            setTimeout(() => this.startNewPath(), duration)
+                const duration = idleAction._clip.duration * 1000
+                setTimeout(() => this.startNewPath(), duration)
+                return
+            }
+
+            this.playSequentialAnimation(false)
         }
+    }
+
+    playSequentialAnimation(playNext = true) {
+        if (!playNext) {
+            const sequenceKeys = Object.keys(ANIMATION_SEQUENCES)
+            const chosenKey = sequenceKeys[Math.floor(Math.random() * sequenceKeys.length)]
+            this.currentSequence = ANIMATION_SEQUENCES[chosenKey]
+            this.currentSeqIndex = 0
+        }
+
+        if (!this.currentSequence || this.currentSeqIndex >= this.currentSequence.length) {
+            this.startNewPath()
+            return
+        }
+
+        const animName = this.currentSequence[this.currentSeqIndex]
+        const animAction = this.animation.actions[animName]
+        if (!animAction) {
+            this.currentSeqIndex = this.currentSeqIndex + 1
+            this.playSequentialAnimation(true)
+            return
+        }
+        this.animation.play(animName)
+        const duration = animAction._clip.duration * 1000
+
+        this.currentSeqIndex = this.currentSeqIndex + 1
+        setTimeout(() => {
+            this.playSequentialAnimation(true)
+        }, duration)
     }
 
     getClickedPartName() {
@@ -356,7 +397,7 @@ export default class Dog {
     getHit() {
         const hits = this.raycaster.intersectObject(this.model, true);
         if (!hits.length) return null;
-        
+
         const h = hits[0];
         if (!h.object.isSkinnedMesh) return null;
 

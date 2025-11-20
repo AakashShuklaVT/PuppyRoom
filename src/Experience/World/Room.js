@@ -28,8 +28,8 @@ export default class Room {
                 child.receiveShadow = true
             }
             if (child.name.includes(ROOM_CHILDREN.Wall)) {
-                child.material.side = THREE.FrontSide
                 child.material.color = new THREE.Color('#b9b8b8')
+                child.material.depthWrite = false
             }
             if (child.name.includes(ROOM_CHILDREN.Floor)) {
                 this.experience.ssrObjects.push(child)

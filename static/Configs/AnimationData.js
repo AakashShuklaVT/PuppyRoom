@@ -118,12 +118,10 @@ export const ANIMATION_NAMES = [
 export const ANIMATIONS_BY_TYPE = {
 
     idle: [
-        // 'Idle_1',
-        // 'Idle_2',
-        // 'Pick_up_idle',
-        // 'Scratching',
-        'Lie_belly_sleep',
-        'Jump_Place_IP'
+        'Idle_1',
+        'Idle_2',
+        'Pick_up_idle',
+        'Scratching',
     ],
 
     walk: [
@@ -157,6 +155,87 @@ export const ANIMATIONS_BY_TYPE = {
         'Trot_F_IP',
         'Trot_L_IP',
         'Trot_R_IP',
+    ],
+}
+
+export const ANIMATION_LOOP_FLAGS = {
+    Walk_B_IP: true,
+    Walk_BL_IP: true,
+    Walk_BR_IP: true,
+    Walk_F_IP: true,
+    Walk_L_IP: true,
+    Walk_R_IP: true,
+
+    Run_F_IP: true,
+    Run_L_IP: true,
+    Run_R_IP: true,
+    RunFast_F_IP: true,
+    RunFast_L_IP: true,
+    RunFast_R_IP: true,
+
+    Idle_1: true,
+    Idle_2: true,
+    Idle_3: true,
+    Idle_4: true,
+    Idle_5_loop: true,
+    Idle_6: true,
+    Idle_7: true,
+
+    Lie_belly_loop_1: true,
+    Lie_belly_loop_2: true,
+
+    Crouch_Idle_loop_1: true,
+
+    Digging_loop: true,
+
+    Lie_belly_sleep: true,
+    Lie_loop_1: true,
+    Sitting_loop_1: true,
+}
+
+export const ANIMATION_SEQUENCES = {
+    Crouch_Idle: [
+        'Crouch_Idle_start',
+        'Crouch_Idle_loop_1',
+        'Crouch_Idle_loop_1',
+        'Crouch_Idle_loop_1',
+        'Crouch_Idle_end',
+    ],
+
+    Digging: [
+        'Digging_start',
+        'Digging_loop',
+        'Digging_loop',
+        'Digging_loop',
+        'Digging_end',
+    ],
+
+    JumpStart: [
+        'JumpStart_Place',
+        'Jump_Place_IP',
+    ],
+
+    Lie_belly: [
+        'Lie_belly_start',
+        'Lie_belly_loop_1',
+        'Lie_belly_loop_1',
+        'Lie_belly_loop_1',
+        'Lie_belly_end',
+    ],
+
+    Lie: [
+        'Lie_start',
+        'Lie_loop_1',
+        'Lie_loop_1',
+        'Lie_end',
+    ],
+
+    Sitting: [
+        'Sitting_start',
+        'Sitting_loop_1',
+        'Sitting_loop_1',
+        'Sitting_loop_1',
+        'Sitting_end',
     ],
 }
 

@@ -10,7 +10,7 @@ export default class ConsoleUI {
         this.isMobile = window.innerWidth < this.threshold
         this.getUIElements()
         this.registerEventListeners()
-
+        this.logCounts = {}
         this.isOpen = false
     }
 
@@ -47,22 +47,40 @@ export default class ConsoleUI {
     }
 
     addLog(name) {
+        const topRow = this.console.firstElementChild;
+
+        if (topRow && topRow.dataset.log === name) {
+            let badge = topRow.querySelector(".log-count");
+            const currentCount = parseInt(badge?.textContent || "1");
+
+            const newCount = currentCount + 1;
+
+            if (!badge) {
+                badge = document.createElement("span");
+                badge.className = "log-count";
+                topRow.appendChild(badge);
+            }
+
+            badge.textContent = newCount;
+            return;
+        }
+
         const time = new Date().toLocaleTimeString([], {
             hour: "2-digit",
-            minute: "2-digit"
-        })
+            minute: "2-digit",
+        });
 
-        const row = document.createElement("div")
-        row.className = "log-line"
-
+        const row = document.createElement("div");
+        row.className = "log-line";
+        row.dataset.log = name;
         row.innerHTML = `
-            <span class="log-time">${time}</span>
-            <span class="log-text">${name}</span>
-        `
+        <span class="log-time">${time}</span>
+        <span class="log-text">${name}</span>
+    `;
 
-        this.console.appendChild(row)
-        this.console.scrollTop = this.console.scrollHeight
+        this.console.insertBefore(row, this.console.firstChild);
     }
+
 
     showAnimation() {
         this.isMobile = window.innerWidth < this.threshold
