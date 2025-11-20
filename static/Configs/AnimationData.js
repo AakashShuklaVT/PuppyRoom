@@ -118,10 +118,12 @@ export const ANIMATION_NAMES = [
 export const ANIMATIONS_BY_TYPE = {
 
     idle: [
-        'Idle_1',
-        'Idle_2',
-        'Pick_up_idle',
-        'Scratching'
+        // 'Idle_1',
+        // 'Idle_2',
+        // 'Pick_up_idle',
+        // 'Scratching',
+        'Lie_belly_sleep',
+        'Jump_Place_IP'
     ],
 
     walk: [
@@ -158,36 +160,19 @@ export const ANIMATIONS_BY_TYPE = {
     ],
 }
 
-export const FADE_PROFILES = {
-    IDLE_TO_TURN: {
-        duration: 0.45,
-        profile: [
-            { end: 0.15, startW: 0, endW: 0.7 },
-            { end: 0.6, startW: 0.7, endW: 0.9 },
-            { end: 1.0, startW: 0.9, endW: 1.0 }
-        ]
-    },
-
-    TURN_TO_WALK: {
-        duration: 0.55,
-        profile: [
-            { end: 0.25, startW: 0, endW: 0.65 },
-            { end: 0.8, startW: 0.65, endW: 0.9 },
-            { end: 1.0, startW: 0.9, endW: 1.0 }
-        ]
-    },
-
-    WALK_TO_IDLE: {
-        duration: 0.3,
-        profile: [
-            { end: 0.2, startW: 0, endW: 0.85 },
-            { end: 1.0, startW: 0.85, endW: 1.0 }
-        ]
-    }
-}
-
 export const TURN_SIDES = {
     STRAIGHT: 'Straight',
     LEFT: 'Left',
     RIGHT: 'Right',
 }
+
+export const FADE_RULES = [
+    { from: 'Walk', to: 'dle', fade: 0.4 },
+    { from: 'Idle', to: 'Walk', fade: 0.4 },
+    { from: 'Run', to: 'dle', fade: 0.2 },
+    { from: 'Scratching', to: 'Run', fade: 0.2 },
+    { from: 'dle', to: 'Lie_belly_sleep', fade: 0.98 },
+    { from: 'Scratching', to: 'Lie_belly_sleep', fade: 0.5 },
+    { from: 'Run', to: 'Lie_belly_sleep', fade: 0.98 },
+    { from: 'Lie_belly_sleep', to: 'dle', fade: 0.98 },
+]

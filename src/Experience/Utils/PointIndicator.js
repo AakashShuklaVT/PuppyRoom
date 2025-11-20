@@ -1,10 +1,8 @@
 import * as THREE from 'three';
 
 export default class PointIndicator {
-    constructor(size = 64, color = 'red') {
+    constructor(size = 64) {
         this.size = size;
-        this.color = color;
-
         this.canvas = document.createElement('canvas');
         this.canvas.width = size;
         this.canvas.height = size;

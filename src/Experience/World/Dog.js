@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import Experience from '../Experience.js'
-import { ANIMATION_NAMES as RAW_NAMES, ANIMATIONS_BY_TYPE, TURN_SIDES } from '../../../static/Configs/AnimationData.js'
+import { ANIMATION_NAMES as RAW_NAMES, ANIMATIONS_BY_TYPE, TURN_SIDES, FADE_RULES } from '../../../static/Configs/AnimationData.js'
 import { BONES_LABEL } from '../../../static/Configs/BonesLabel.js'
 import PointIndicator from '../Utils/PointIndicator.js'
 
@@ -12,7 +12,7 @@ const ANIMATIONNAMES = {
     TURN_RIGHT: 'Turn_R_IP',
     TURN_LEFT_180: 'Turn_L180_IP',
     TURN_RIGHT_180: 'Turn_R180_IP',
-    RUN_FORWARD : 'Run_F_IP',
+    RUN_FORWARD: 'Run_F_IP',
     RUN_LEFT: 'Run_L_IP',
     RUN_RIGHT: 'Run_R_IP',
 }
@@ -23,7 +23,7 @@ export default class Dog {
         this.scene = this.experience.scene
         this.resources = this.experience.resources
         this.eventEmitter = this.experience.eventEmitter
-        
+
         this.time = this.experience.time
         this.debug = this.experience.debug
         this.camera = this.experience.camera.instance
@@ -33,7 +33,7 @@ export default class Dog {
 
         this.speed = 0.0006
         this.walkSpeed = 0.0006
-        this.runSpeed  = 0.002
+        this.runSpeed = 0.002
 
         this.reached = false
 
@@ -45,7 +45,7 @@ export default class Dog {
 
         this.idleAnimations = ANIMATIONS_BY_TYPE.idle
 
-        this.stoppingAnimation = 'Idle_7'               
+        this.stoppingAnimation = 'Idle_7'
         this.currentIdleIndex = 0
 
         if (this.debug.active) this.debugFolder = this.debug.ui.addFolder('dog')
@@ -56,7 +56,7 @@ export default class Dog {
         this.setupRaycaster()
         this.addEventListeners()
         const firstIdle = this.idleAnimations[0]
-        const idleAction = this.animation.actions[firstIdle]    
+        const idleAction = this.animation.actions[firstIdle]
 
         this.elapsedIdleTime = 0
         this.idleActionDuration = idleAction._clip.duration * 1000
@@ -94,36 +94,32 @@ export default class Dog {
         }
 
         this.animation.play = name => {
-            const newAction = this.animation.actions[name]
-            const oldAction = this.animation.actions.current
-            if (!newAction || newAction === oldAction) return
+            const next = this.animation.actions[name]
+            const prev = this.animation.actions.current
+            if (!next || next === prev) return
 
-            let fadeDuration = 0.3
-            if (oldAction._clip.name.includes('Walk') && newAction._clip.name.includes('dle')) {
-                fadeDuration = 0.4
-            }
-            else if (oldAction._clip.name.includes('dle') && newAction._clip.name.includes('Walk')) {
-                fadeDuration = 0.4
-            }
-            else if (oldAction._clip.name.includes('Run') && newAction._clip.name.includes('dle')) {
-                fadeDuration = 0.2
-            }
-            else if (oldAction._clip.name.includes('Scratching') && newAction._clip.name.includes('Run')) {
-                fadeDuration = 0.2
-            }
+            const fade = this.getFadeDuration(prev, next)
 
-            if (oldAction) {
-                newAction.reset()
-                newAction.crossFadeFrom(oldAction, fadeDuration, true)
-            }
+            next.reset()
+            if (prev) next.crossFadeFrom(prev, fade, true)
 
-            newAction.play()
-            this.animation.actions.current = newAction
+            next.play()
+            this.animation.actions.current = next
         }
-        
-        const idle = this.idleAnimations[0]
-        this.animation.actions.current = this.animation.actions[idle]
-        this.animation.actions.current.play()
+    }
+
+    getFadeDuration(prevAction, nextAction) {
+        if (!prevAction) return 0.3
+
+        const a = prevAction._clip.name
+        const b = nextAction._clip.name
+
+        const rules = FADE_RULES
+
+        for (const r of rules) {
+            if (a.includes(r.from) && b.includes(r.to)) return r.fade
+        }
+        return 0.3
     }
 
     setupRaycaster() {
@@ -131,22 +127,22 @@ export default class Dog {
         this.pointer = new THREE.Vector2();
         this.camera = this.experience.camera.instance;
     }
-    
+
     addEventListeners() {
         this.dragging = false;
-    
+
         window.addEventListener('pointerdown', e => {
             this.dragging = true;
             this.updatePointer(e);
             this.getClickedPartName();
         });
-    
+
         window.addEventListener('pointermove', e => {
             if (!this.dragging) return;
             this.updatePointer(e);
             this.getClickedPartName();
         });
-    
+
         window.addEventListener('pointerup', () => {
             this.dragging = false;
         });
@@ -282,7 +278,7 @@ export default class Dog {
         this.startQuaternion = this.model.quaternion.clone()
         this.endQuaternion = new THREE.Quaternion().setFromUnitVectors(forward, correctedDir)
         this.turnProgress = 0
-        this.isTurning = true                   
+        this.isTurning = true
         this.minAngle = 10
 
         let turnAnim
@@ -295,8 +291,8 @@ export default class Dog {
             if (this.turnAngle < this.minAngle) turnAnim = ANIMATIONNAMES.WALK_FORWARD
             else if (this.turnAngle < this.maxTurnAngle) turnAnim = ANIMATIONNAMES.TURN_RIGHT
         }
-        
-        this.animation.play(turnAnim)       
+
+        this.animation.play(turnAnim)
 
         const clip = this.animation.actions[turnAnim]?._clip
         const clipDuration = clip ? clip.duration : 1.0
@@ -343,7 +339,7 @@ export default class Dog {
         this.eventEmitter.trigger('bodyPartClicked', [name])
 
         if (!this.pointIndicator) {
-            this.pointIndicator = new PointIndicator(128, 'red');
+            this.pointIndicator = new PointIndicator(128);
         }
 
         const sprite = this.pointIndicator.sprite;
@@ -360,7 +356,7 @@ export default class Dog {
     getHit() {
         const hits = this.raycaster.intersectObject(this.model, true);
         if (!hits.length) return null;
-
+        
         const h = hits[0];
         if (!h.object.isSkinnedMesh) return null;
 
@@ -371,7 +367,7 @@ export default class Dog {
         const pos = hit.point.clone();
         let best = null;
         let bestDist = Infinity;
-        
+
         for (const bone of hit.object.skeleton.bones) {
             const inv = new THREE.Matrix4().copy(bone.matrixWorld).invert();
             const local = pos.clone().applyMatrix4(inv);
