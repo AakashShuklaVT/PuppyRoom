@@ -347,6 +347,7 @@ export default class Dog {
         }
 
         const sprite = this.pointIndicator.sprite;
+        this.pointIndicator.elapsedTime = 0
         if (sprite.parent) sprite.parent.remove(sprite);
 
         bone.add(sprite);
