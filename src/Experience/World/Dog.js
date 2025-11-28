@@ -56,13 +56,11 @@ export default class Dog {
         this.turnAngle = 0
         this.turnDirection = 'Straight'
 
-        // RESTORED — REQUIRED for logic
         this.minDistance = 1.5
         this.minTurnAngle = 70
         this.maxTurnAngle = 135
         this.minAngle = 10
 
-        // idle logic
         this.idleAnimations = ANIMATIONS_BY_TYPE.idle
         this.stoppingAnimation = ANIMATIONNAMES.ATTACK
         this.currentIdleIndex = 0
