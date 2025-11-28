@@ -64,7 +64,7 @@ export default class Dog {
 
         // idle logic
         this.idleAnimations = ANIMATIONS_BY_TYPE.idle
-        this.stoppingAnimation = ANIMATIONNAMES.STOPPING_IDLE
+        this.stoppingAnimation = ANIMATIONNAMES.ATTACK
         this.currentIdleIndex = 0
 
         if (this.debug.active) this.debugFolder = this.debug.ui.addFolder('dog')
