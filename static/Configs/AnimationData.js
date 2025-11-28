@@ -255,4 +255,5 @@ export const FADE_RULES = [
     { from: 'Run', to: 'Lie_belly_sleep', fade: 0.98 },
     { from: 'Lie_belly_sleep', to: 'dle', fade: 0.98 },
     { from: 'Attack_F', to: 'Sitting_start', fade: 0.2 },
+    { from: 'dle', to: 'Sitting_start', fade: 0.2 },
 ]
