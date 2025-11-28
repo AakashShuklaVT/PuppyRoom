@@ -1,10 +1,10 @@
 export const BONES_LABEL = {
     "Root_bone": "root",
     "Spine_base": "spine base",
-    "Spine_02": "spine 02",
-    "Spine_03": "spine 03",
-    "Spine_04": "spine 04",
-    "Spine_05": "spine 05",
+    "Spine_02": "Spine Back",
+    "Spine_03": "Spine Middle Back",
+    "Spine_04": "Spine Middle Front",
+    "Spine_05": "Spine Front",
 
     "neck": "Neck",
     "head": "Head",

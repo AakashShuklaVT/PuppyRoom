@@ -22,7 +22,6 @@ export default class Room {
     setModel() {
         this.model = this.resource.scene
         this.model.scale.set(1, 1, 1)
-
         this.model.traverse((child) => {
             if (child instanceof THREE.Mesh) {
                 child.receiveShadow = true

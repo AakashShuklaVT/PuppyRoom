@@ -52,7 +52,7 @@ export default class Camera {
         this.controls.maxDistance = 8
         this.controls.maxPolarAngle = Math.PI * 0.45
         this.controls.target.set(0, 0.5, 0.5)
-        this.controls.enablePan = false    
+        this.controls.enablePan = false
         this.controls.autoRotate = false
         this.controls.update()
     }

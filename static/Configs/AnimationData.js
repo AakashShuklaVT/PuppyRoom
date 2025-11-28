@@ -246,12 +246,13 @@ export const TURN_SIDES = {
 }
 
 export const FADE_RULES = [
-    { from: 'Walk', to: 'dle', fade: 0.4 },
+    { from: 'Walk', to: 'dle', fade: 0.3 },
     { from: 'Idle', to: 'Walk', fade: 0.4 },
-    { from: 'Run', to: 'dle', fade: 0.2 },
+    { from: 'Run', to: 'dle', fade: 0.3 },
     { from: 'Scratching', to: 'Run', fade: 0.2 },
     { from: 'dle', to: 'Lie_belly_sleep', fade: 0.98 },
     { from: 'Scratching', to: 'Lie_belly_sleep', fade: 0.5 },
     { from: 'Run', to: 'Lie_belly_sleep', fade: 0.98 },
     { from: 'Lie_belly_sleep', to: 'dle', fade: 0.98 },
+    { from: 'Attack_F', to: 'Sitting_start', fade: 0.2 },
 ]

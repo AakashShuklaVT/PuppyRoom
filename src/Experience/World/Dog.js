@@ -15,6 +15,8 @@ const ANIMATIONNAMES = {
     RUN_FORWARD: 'Run_F_IP',
     RUN_LEFT: 'Run_L_IP',
     RUN_RIGHT: 'Run_R_IP',
+    ATTACK: 'Attack_F',
+    STOPPING_IDLE: 'Idle_7'
 }
 
 export default class Dog {
@@ -45,7 +47,8 @@ export default class Dog {
 
         this.idleAnimations = ANIMATIONS_BY_TYPE.idle
 
-        this.stoppingAnimation = 'Idle_7'
+        this.stoppingAnimation = ANIMATIONNAMES.STOPPING_IDLE
+
         this.currentIdleIndex = 0
 
         if (this.debug.active) this.debugFolder = this.debug.ui.addFolder('dog')
@@ -53,9 +56,11 @@ export default class Dog {
         this.resource = this.resources.items.dogModel
 
         this.setModel()
+        this.uiElements()
         this.setAnimation()
         this.setupRaycaster()
         this.addEventListeners()
+
         const firstIdle = this.idleAnimations[0]
         const idleAction = this.animation.actions[firstIdle]
 
@@ -66,6 +71,10 @@ export default class Dog {
             this.animation.play(firstIdle)
             setTimeout(() => this.startNewPath(), idleAction._clip.duration * 1000)
         }
+    }
+
+    uiElements() {
+        this.stoppingAnimationButton = document.getElementById('animation')
     }
 
     setModel() {
@@ -137,6 +146,7 @@ export default class Dog {
         this.dragging = false;
 
         window.addEventListener('pointerdown', e => {
+            if (e.button !== 0) return;
             this.dragging = true;
             this.updatePointer(e);
             this.getClickedPartName();
@@ -151,6 +161,15 @@ export default class Dog {
         window.addEventListener('pointerup', () => {
             this.dragging = false;
         });
+
+        this.stoppingAnimationButton.addEventListener("change", (e) => {
+            this.isOpen = e.target.checked
+            if (this.isOpen) {
+                this.stoppingAnimation = ANIMATIONNAMES.ATTACK
+            } else {
+                this.stoppingAnimation = ANIMATIONNAMES.STOPPING_IDLE
+            }
+        })
     }
 
     updatePointer(e) {
@@ -169,11 +188,10 @@ export default class Dog {
 
         let end
         let attempts = 0
-        let maxAttempts = 30
+        let maxAttempts = 60
         this.minDistance = 1.5
         this.minTurnAngle = 70
         this.maxTurnAngle = 135
-
         do {
             end = new THREE.Vector3(THREE.MathUtils.randFloat(-halfWidth, halfWidth), 0, THREE.MathUtils.randFloat(-halfHeight, halfHeight))
 
@@ -428,7 +446,6 @@ export default class Dog {
 
     update() {
         this.animation.mixer.update(this.time.delta * 0.001)
-
         if (this.pointIndicator) {
             this.pointIndicator.update(this.time.delta / 1000)
         }
